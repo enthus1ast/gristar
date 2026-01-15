@@ -42,7 +42,7 @@ proc extractFiles(path: string, globPattern = "", dirToExtract: string) =
   ## extracts all files to the given folder
 
   # select aa.fileName, ff.ident, ff.data from _gristsys_Files as ff INNER JOIN _grist_Attachments as aa on ff.ident = aa.fileident  ;
-  # select aa.fileName, aa.fileSize, ff.ident, ff.data from _gristsys_Files as ff INNER JOIN _grist_Attachments as aa on ff.ident = aa.fileident  ;
+  # select aa.fileName, aa.fileSize, ff.data from _gristsys_Files as ff INNER JOIN _grist_Attachments as aa on ff.ident = aa.fileident  ;
 
 
 
@@ -51,17 +51,20 @@ proc extractFiles(path: string, globPattern = "", dirToExtract: string) =
     createDir(dirToExtract)
 
   var pattern = glob(globPattern)
-  for row in db.rows(sql"select fileName, fileSize from _grist_Attachments;"):
+  let qq = sql"""
+    SELECT 
+      aa.fileName, 
+      aa.fileSize, 
+      ff.data 
+    FROM _gristsys_Files AS ff 
+    INNER JOIN _grist_Attachments AS aa 
+    ON ff.ident = aa.fileident  ;
+    """
+  for row in db.rows(qq):
     if globPattern != "":
       if not row[0].matches(pattern):
         continue
-    
-
-  for row in db.rows(sql"select ident, length(data) as filesize, data from _gristsys_Files;"):
-    if globPattern != "":
-      if not row[0].matches(pattern):
-        continue
-    echo row[0], formatSize(row[1].parseInt()).align(20, padding = '.')
+    echo row[0], "\t", formatSize(row[1].parseInt()).align(20, padding = ' ')
     let fh = open(dirToExtract / row[0], fmWrite)
     fh.write(row[2])
     fh.close()
