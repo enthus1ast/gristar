@@ -21,17 +21,14 @@ import libgristar
 #         storageId TEXT
 #        );
 
-proc `$`(attachment: GristAttachment | GristAttachmentWithData, maxLen = 0): string =
-    let tName = (attachment.fileName & " ").alignLeft(maxLen, padding = ' ')
-    let tSize = (formatSize(attachment.fileSize) & " ").align(20, padding = ' ')
-    return tSize & "\t" & tName 
 
 proc cliListFiles(path: string, globPattern = "") =
   ## list all files in a grist database
   var ar = newGristAr(path)
-  let maxLen = ar.getLongestAttachmentName()
+  # let maxLen = ar.getLongestAttachmentName()
   for attachment in ar.listFiles(globPattern):
     echo attachment
+  echo "# Sum: ", ar.getFileSizeSum(globPattern).formatSize()
   ar.close()
 
 
@@ -46,6 +43,8 @@ proc extractFiles(path: string, globPattern = "", dirToExtract: string) =
     let fh = open(dirToExtract / gawd.fileName, fmWrite)
     fh.write(gawd.data)
     fh.close()
+  echo "# Sum: ", ar.getFileSizeSum(globPattern).formatSize()
+
 
   
 # proc extractAllFiles(path: string, dirToExtract: string) = 
@@ -68,10 +67,19 @@ proc cat(path: string, fileName: string) =
      # -x, --extract              Extract files from archive
      #
 
+# when isMainModule:
+#   discard
+#   dispatchMulti(
+#     [cliListFiles],
+#     [extractFiles],
+#   #  # [cat]
+#   )
+
 when isMainModule:
-  discard
   dispatchMulti(
-    [cliListFiles],
-  #  # [extractFiles],
-  #  # [cat]
+    [cliListFiles, cmdName = "At", doc = "List contents of archive"],
+    [cliListFiles, cmdName = "listFiles", doc = "List contents of archive"],
+    # [extract,  = "x", doc = "Extract files from archive"],
+    # [cat, cmdName = "cat", doc = "Print file content to stdout"],
+    # [insert, cmdName = "i", doc = "Insert/Update files in archive"]
   )
