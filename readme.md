@@ -84,7 +84,7 @@ user@host:~/projects/gristar$ gristar listFiles -p 'data/Inventory_2026.grist' -
 Piping a PDF directly from the Grist database to a local file.
 
 ```bash
-gristar cat -p 'data/Inventory_2026.grist' "Manual_v1.pdf" > ./local_copy.pdf
+gristar cat -p 'data/Inventory_2026.grist' -f "Manual_v1.pdf" > ./local_copy.pdf
 
 ```
 
