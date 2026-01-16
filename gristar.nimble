@@ -13,6 +13,7 @@ bin           = @["gristar"]
 requires "nim >= 2.2.6"
 requires "cligen"
 requires "glob"
-requires "nisane"
+# requires "nisane" # TODO 
+requires "https://github.com/enthus1ast/nisane"
 requires "nimja"
 requires "db_connector"
