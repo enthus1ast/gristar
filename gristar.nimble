@@ -11,3 +11,8 @@ bin           = @["gristar"]
 # Dependencies
 
 requires "nim >= 2.2.6"
+requires "cligen"
+requires "glob"
+requires "nisane"
+requires "nimja"
+requires "db_connector"
