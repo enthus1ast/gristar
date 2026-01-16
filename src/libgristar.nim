@@ -88,11 +88,11 @@ proc openBlobPointerViaIdent*(gristAr: GristAr, fileIdent: string): BlobPointer 
 
 proc closeBlobPointer*(blobPointer: BlobPointer) =
   ## Closes a blob pointer
-  echo blob_close(blobPointer.blob)
+  discard blob_close(blobPointer.blob)
 
 
 proc `=destroy`*(blobPointer: BlobPointer) =
-  echo blob_close(blobPointer.blob)
+  discard blob_close(blobPointer.blob)
   
 
 proc getFileViaName*(gristAr: GristAr, fileName: string): GristAttachment =

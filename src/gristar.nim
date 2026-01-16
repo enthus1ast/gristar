@@ -1,12 +1,13 @@
-##        GristAr 
-##
-## `ar` for .grist files
-## Manipulate / List / Extract 
-## attachments from grist files
-##
-## - https://getgrist.com
-## - https://dkrause.org
-##
+#        GristAr 
+#
+# `ar` for .grist files
+# Manipulate / List / Extract 
+# attachments from grist files
+#
+# - https://getgrist.com
+# - https://dkrause.org
+#
+# MIT 2026 
 
 import strutils, os
 import cligen
@@ -17,6 +18,9 @@ import libgristar
 
 proc cliListFiles(path: string, globPattern = "") =
   ## list all files in a grist database
+  ## globPattern is something like:
+  ##  "foo/*.png"
+  ##  "baa_*_2026.png"
   var ar = newGristAr(path)
   for attachment in ar.listFiles(globPattern):
     echo attachment
@@ -26,15 +30,17 @@ proc cliListFiles(path: string, globPattern = "") =
 
 proc extractFiles(path: string, globPattern = "", dirToExtract: string) = 
   ## extracts all files to the given folder
+  ## globPattern is something like:
+  ##  "foo/*.png"
+  ##  "baa_*_2026.png"
   var ar = newGristAr(path)
   if not dirExists(dirToExtract):
     createDir(dirToExtract)
-
   var sumSize = 0
-  for ga in ar.listFiles(globPattern):
-    echo ga
-    sumSize.inc ga.fileSize
-    ar.streamAttachmentToDisk(ga, dirToExtract / ga.fileName)
+  for attachment in ar.listFiles(globPattern):
+    echo attachment
+    sumSize.inc attachment.fileSize
+    ar.streamAttachmentToDisk(attachment, dirToExtract / attachment.fileName)
   echo "# Sum: ", sumSize.formatSize()
 
 
@@ -44,15 +50,10 @@ proc cat(path: string, fileName: string) =
   let ga = ar.getFileViaName(fileName)
   ar.streamAttachmentToStdout(ga)
 
-# import libsqliteadditions
 
 when isMainModule:
   dispatchMulti(
-    # [test],
-    [extractFiles],
-    [cliListFiles, cmdName = "At", doc = "List contents of archive"],
-    [cliListFiles, cmdName = "listFiles", doc = "List contents of archive"],
-    # [extract,  = "x", doc = "Extract files from archive"],
-    [cat, cmdName = "cat", doc = "Print file content to stdout"],
-    # [insert, cmdName = "i", doc = "Insert/Update files in archive"]
+    [extractFiles, cmdName = "extractFiles"],
+    [cliListFiles, cmdName = "listFiles"],
+    [cat,          cmdName = "cat"]
   )
