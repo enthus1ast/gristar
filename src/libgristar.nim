@@ -10,14 +10,16 @@ import glob
 import nisane
 
 type
-  GristAr* = object
+  GristAr* = ref object
     pathToDb*: string
     db*: DbConn
   GristAttachment* = object
     fileName*: string
+    fileIdent*: string
     fileSize*: int
   GristAttachmentWithData* = object ## Use this if you know you have a lot of small files
     fileName*: string
+    fileIdent*: string
     fileSize*: int
     data*: string ## Stores the whole file
   # GristAttachmentWithStream* = object ## This conains a streaming handle where you can stream very large files as well
@@ -37,9 +39,9 @@ type
     of MetadataOnly:
       discard
     of WithData:
-      data: string
+      data*: string
     of WithStream:
-      stream: int # TODO use a stream or pointer? who knows
+      stream*: int # TODO use a stream or pointer? who knows
 
 
 proc `$`*(attachment: GristAttachment | GristAttachmentWithData, maxLen = 0): string =
@@ -47,7 +49,20 @@ proc `$`*(attachment: GristAttachment | GristAttachmentWithData, maxLen = 0): st
     let tSize = (formatSize(attachment.fileSize) & " ").align(15, padding = ' ')
     return tSize & "\t" & tName 
 
+proc `$`*(attachment: GristAttachmentNew, maxLen = 0): string =
+    let tName = (attachment.fileName & " ").alignLeft(maxLen, padding = ' ')
+    let tSize = (formatSize(attachment.fileSize) & " ").align(15, padding = ' ')
+    case attachment.kind
+    of MetadataOnly:
+      discard
+    of WithData:
+      discard
+    of WithStream:
+      discard
+    return tSize & "\t" & tName 
+
 proc newGristAr*(pathToDb: string): GristAr =
+  result = GristAr()
   result.pathToDb = pathToDb
   result.db = open(pathToDb, "", "", "")
 
@@ -71,7 +86,7 @@ iterator listFiles*(gristAr: GristAr, globPattern: string): GristAttachment =
   let maxLen = gristAr.db.getValue(
     sql"select max(length(fileName)) as len from _grist_Attachments ;").parseInt
   var pattern = glob(globPattern)
-  for rowRaw in gristAr.db.rows(sql"select fileName, fileSize from _grist_Attachments;"):
+  for rowRaw in gristAr.db.rows(sql"select fileName, fileIdent, fileSize from _grist_Attachments;"):
     var row: GristAttachment
     rowRaw.to(row)
     if globPattern != "":
@@ -86,6 +101,7 @@ iterator listFilesWithData*(gristAr: GristAr, globPattern: string): GristAttachm
   let qq = sql"""
     SELECT 
       aa.fileName, 
+      aa.fileIdent
       aa.fileSize, 
       ff.data 
     FROM _gristsys_Files AS ff 
@@ -110,6 +126,70 @@ proc getFileViaIdent*(gristAr: GristAr, fileIdent: string): GristAttachmentWithD
     row.to(result)
     break
 
+type 
+  BlobPointer* = object # TODO # this is wrapped in an object to auto close with destructor!
+   gristAr: GristAr
+   blob*: PSqlite3Blob
+
+proc newBlobPointer(gristAr: GristAr): BlobPointer =
+  result.gristAr = gristAr
+
+##proc streamBlobToFile*(db: PSqlite3, rowId: int64, destPath: string) =
+##  var blob: PSqlite3Blob
+##  # "main" is the default DB name; 0 is for read-only access
+##  if blob_open(db, "main", "_gristsys_Files", "data", rowId, 0, blob) == 0:
+##    let size = blob_bytes(blob)
+##    let f = open(destPath, fmWrite)
+##    
+##    var buffer = newString(8192) # 8KB buffer
+##    var offset: int32 = 0
+##    
+##    while offset < size:
+##      let toRead = min(8192, size - offset)
+##      if blob_read(blob, addr buffer[0], toRead.int32, offset) == 0:
+##        f.write(buffer[0 ..< toRead])
+##      offset += toRead
+##      
+##    f.close()
+##    discard blob_close(blob)
+
+proc openBlobPointerViaIdent*(gristAr: GristAr, fileIdent: string): BlobPointer =
+  ## Returns an opened blob pointer to the given file ident: "aasdfs...dfsadf.png"
+  ## The blobpointer is closed automatically.
+  ## But can also be closed manually with `closeBlobPointer`
+  let val = gristAr.db.getValue(sql"SELECT id FROM _gristsys_Files WHERE ident = ?", fileIdent)
+  if val == "":
+    raise newException(IOError, "no file with given ident: " & fileIdent)
+
+  let rowId: int64 = val.parseInt()
+  echo "DEBUG rowId: ", rowID
+
+   # "main" is the default DB name; 0 is for read-only access
+  if 0 != blob_open(
+    gristAr.db.PSqlite3(), 
+    "main".cstring, # main is the default DB name
+    "_gristsys_Files".cstring,
+    "data".cstring,
+    rowId,
+    0'i32,
+    result.blob
+  ): 
+    raise newException(IOError, "could not open blob for ident: " & fileIdent)
+        
+  
+
+
+proc closeBlobPointer*(blobPointer: BlobPointer) =
+  ## Closes a blob pointer
+  echo blob_close(blobPointer.blob)
+
+proc `=destroy`*(blobPointer: BlobPointer) =
+  echo blob_close(blobPointer.blob)
+  
+  #echo "Destroy Blob Pointer"
+  #blobPointer.gristAr.closeBlobPointer(blobPointer)
+  # closeBlobPointer(blobPointer) ## TODO how to bind the gristAr? We might need to set a ref to it in newBlobPointer or so
+
 proc getFileViaName*(gristAr: GristAr, fileName: string): GristAttachmentWithData =
   let qq = sql"""
     SELECT 
@@ -124,4 +204,27 @@ proc getFileViaName*(gristAr: GristAr, fileName: string): GristAttachmentWithDat
   for row in gristAr.db.rows(qq, fileName):
     row.to(result)
     break
+
+
+proc streamAttachmentToDisk*(gristAr: GristAr, attachment: GristAttachment, destPath: string) = 
+  ## streams a grist attachment to disk
+  const BUFSIZE = 1024 * 2
+  let blob = gristAr.openBlobPointerViaIdent(attachment.fileIdent)
+  let size = blob_bytes(blob.blob)
+  let fh = open(destPath, fmWrite)
+  var buffer = newString(BUFSIZE)
+  var offset: int = 0
+  while offset < size:
+    let toRead = min(BUFSIZE, size - offset)
+    echo "DEBUG readChunk: ", toRead
+    if blob_read(blob.blob, addr buffer[0], toRead.int32, offset.int32) == 0:
+      fh.write(buffer[0 ..< toRead])
+    offset += toRead                               
+  fh.close()
+
+
+
+
+  
+
 

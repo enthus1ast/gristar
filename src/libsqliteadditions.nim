@@ -1,5 +1,6 @@
 import db_connector/sqlite3
 
+export PSqlite3
 
 # #######################################
 # Sqlite3 additions
