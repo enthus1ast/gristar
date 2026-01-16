@@ -1,4 +1,4 @@
-# - TODO use sqlite3_open_blob and stream the blob when larger than x 
+# - DONE use sqlite3_open_blob and stream the blob when larger than x 
 # - TODO replace a file.
 # - TODO/MAYBE add files? 
 

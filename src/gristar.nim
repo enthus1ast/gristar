@@ -1,13 +1,13 @@
-#        GristAr 
-#
-# `ar` for .grist files
-# Manipulate / List / Extract 
-# attachments from grist files
-#
-# - https://getgrist.com
-# - https://dkrause.org
-#
-# MIT 2026 
+##        GristAr 
+##
+## `ar` for .grist files
+## Manipulate / List / Extract 
+## attachments from grist files
+##
+## - https://getgrist.com
+## - https://dkrause.org
+##
+## MIT 2026 
 
 import strutils, os
 import cligen
@@ -15,6 +15,18 @@ import db_connector/db_sqlite
 import glob
 import nisane
 import libgristar
+
+# proc help*() =
+#   ##        GristAr 
+#   ## `ar` for .grist files
+#   ## Manipulate / List / Extract 
+#   ## attachments from grist files
+#   ##
+#   ## - https://getgrist.com
+#   ## - https://dkrause.org
+#   ##
+#   ## MIT 2026 
+    
 
 proc cliListFiles(path: string, globPattern = "") =
   ## list all files in a grist database
