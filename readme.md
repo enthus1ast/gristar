@@ -16,7 +16,8 @@ You can install GristAr and all its dependencies easily using Nimble:
 
 ```bash
 nimble install gristar
-
+# or
+nimble install https://github.com/enthus1ast/gristar.git
 ```
 
 ## Usage
@@ -40,35 +41,54 @@ Run "gristar help" to get *comprehensive* help.
 
 ## Examples
 
-Below are common usage patterns. Replace `my_database.grist` with the path to your file.
+Below are common usage patterns showing real terminal output.
 
-**Extract all files to a specific folder:**
+### 1. Extract specific files
 
-```bash
-gristar extractFiles -p my_database.grist -d /tmp/images/
+Extracting all `.jpeg` images to a temporary folder.
+
+```console
+user@host:~/projects/gristar$ gristar extractFiles -p 'data/Inventory_2026.grist' -d /tmp/images3/ -g "*.jpeg"
+    138.184KiB     Product___Alpha.jpeg 
+    683.696KiB     Site___Inspection.jpeg 
+       1.58MiB     Architecture___Draft.jpeg 
+    401.319KiB     Scan___Receipt_01.jpeg 
+      1.119MiB     Chart___Q1_Results.jpeg 
+    124.018KiB     Logo___Variant_A.jpeg 
+    122.023KiB     Logo___Variant_B.jpeg 
+    461.554KiB     Team___Offsite.jpeg 
+    146.976KiB     Mockup___V2.jpeg 
+      1.969MiB     Marketing___Banner.jpeg 
+     63.086KiB     Icon___User.jpeg 
+    129.379KiB     Icon___Settings.jpeg 
+     41.036KiB     Asset___Background.jpeg 
+     45.999KiB     portrait-placeholder-1-[1].jpeg 
+# Sum: 6.97MiB
 
 ```
 
-**Extract only specific files (using wildcards):**
+### 2. List files with a pattern
 
-```bash
-# Extract all files matching *Martin*
-gristar extractFiles -p my_database.grist -d /tmp/images/ -g "*Martin*"
+Filtering the archive list for filenames containing "Martin".
 
-# Extract only PNGs
-gristar extractFiles -p my_database.grist -d /tmp/images/ -g "*.png"
+```console
+user@host:~/projects/gristar$ gristar listFiles -p 'data/Inventory_2026.grist' -g="*Martin*"
+    558.042KiB     Design_Spec___Martin.png 
+    315.318KiB     Signature___Martin.jpg 
+# Sum: 873.36KiB
 
 ```
 
-**List files in the archive:**
+### 3. Stream a file
+
+Piping a PDF directly from the Grist database to a local file.
 
 ```bash
-gristar listFiles -p my_database.grist
+gristar cat -p 'data/Inventory_2026.grist' "Manual_v1.pdf" > ./local_copy.pdf
 
 ```
 
 ## License
 
 MIT 2026. Created by [dkrause.org](https://dkrause.org).
-
 
