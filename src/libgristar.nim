@@ -134,35 +134,15 @@ type
 proc newBlobPointer(gristAr: GristAr): BlobPointer =
   result.gristAr = gristAr
 
-##proc streamBlobToFile*(db: PSqlite3, rowId: int64, destPath: string) =
-##  var blob: PSqlite3Blob
-##  # "main" is the default DB name; 0 is for read-only access
-##  if blob_open(db, "main", "_gristsys_Files", "data", rowId, 0, blob) == 0:
-##    let size = blob_bytes(blob)
-##    let f = open(destPath, fmWrite)
-##    
-##    var buffer = newString(8192) # 8KB buffer
-##    var offset: int32 = 0
-##    
-##    while offset < size:
-##      let toRead = min(8192, size - offset)
-##      if blob_read(blob, addr buffer[0], toRead.int32, offset) == 0:
-##        f.write(buffer[0 ..< toRead])
-##      offset += toRead
-##      
-##    f.close()
-##    discard blob_close(blob)
-
 proc openBlobPointerViaIdent*(gristAr: GristAr, fileIdent: string): BlobPointer =
   ## Returns an opened blob pointer to the given file ident: "aasdfs...dfsadf.png"
   ## The blobpointer is closed automatically.
   ## But can also be closed manually with `closeBlobPointer`
-  let val = gristAr.db.getValue(sql"SELECT id FROM _gristsys_Files WHERE ident = ?", fileIdent)
-  if val == "":
+  let id = gristAr.db.getValue(sql"SELECT id FROM _gristsys_Files WHERE ident = ?", fileIdent)
+  if id == "":
     raise newException(IOError, "no file with given ident: " & fileIdent)
 
-  let rowId: int64 = val.parseInt()
-  echo "DEBUG rowId: ", rowID
+  let rowId: int64 = id.parseInt()
 
    # "main" is the default DB name; 0 is for read-only access
   if 0 != blob_open(
@@ -175,9 +155,6 @@ proc openBlobPointerViaIdent*(gristAr: GristAr, fileIdent: string): BlobPointer 
     result.blob
   ): 
     raise newException(IOError, "could not open blob for ident: " & fileIdent)
-        
-  
-
 
 proc closeBlobPointer*(blobPointer: BlobPointer) =
   ## Closes a blob pointer
@@ -186,20 +163,17 @@ proc closeBlobPointer*(blobPointer: BlobPointer) =
 proc `=destroy`*(blobPointer: BlobPointer) =
   echo blob_close(blobPointer.blob)
   
-  #echo "Destroy Blob Pointer"
-  #blobPointer.gristAr.closeBlobPointer(blobPointer)
-  # closeBlobPointer(blobPointer) ## TODO how to bind the gristAr? We might need to set a ref to it in newBlobPointer or so
 
-proc getFileViaName*(gristAr: GristAr, fileName: string): GristAttachmentWithData =
+proc getFileViaName*(gristAr: GristAr, fileName: string): GristAttachment =
   let qq = sql"""
     SELECT 
       aa.fileName, 
-      aa.fileSize, 
-      ff.data 
+      aa.fileIdent,
+      aa.fileSize
     FROM _gristsys_Files AS ff 
     INNER JOIN _grist_Attachments AS aa 
-    ON ff.ident = aa.fileName;
-    WHERE fileName = ` 
+    ON ff.ident = aa.fileIdent
+    WHERE fileName = ?;
     """
   for row in gristAr.db.rows(qq, fileName):
     row.to(result)
@@ -216,11 +190,28 @@ proc streamAttachmentToDisk*(gristAr: GristAr, attachment: GristAttachment, dest
   var offset: int = 0
   while offset < size:
     let toRead = min(BUFSIZE, size - offset)
-    echo "DEBUG readChunk: ", toRead
+    #echo "DEBUG readChunk: ", toRead
     if blob_read(blob.blob, addr buffer[0], toRead.int32, offset.int32) == 0:
       fh.write(buffer[0 ..< toRead])
     offset += toRead                               
   fh.close()
+
+proc streamAttachmentToStdout*(gristAr: GristAr, attachment: GristAttachment) = 
+  ## streams a grist attachment to disk
+  const BUFSIZE = 1024 * 4
+  let blob = gristAr.openBlobPointerViaIdent(attachment.fileIdent)
+  let size = blob_bytes(blob.blob)
+  var buffer = newString(BUFSIZE)
+  var offset: int = 0
+  while offset < size:
+    let toRead = min(BUFSIZE, size - offset)
+    #echo "DEBUG readChunk: ", toRead
+    if blob_read(blob.blob, addr buffer[0], toRead.int32, offset.int32) == 0:
+      stdout.write(buffer[0 ..< toRead])
+    offset += toRead                               
+  stdout.flushFile()
+
+
 
 
 

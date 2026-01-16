@@ -71,43 +71,37 @@ proc extractFiles(path: string, globPattern = "", dirToExtract: string) =
 proc cat(path: string, fileName: string) =
   ## writes the content of the file to stdout
   var ar = newGristAr(path)
-  let gawd = ar.getFileViaName(fileName)
-  if gawd.fileName == "":
-    return
-  stdout.write(gawd.data)
-  stdout.flushFile()
-  return
+  let ga = ar.getFileViaName(fileName)
+  ar.streamAttachmentToStdout(ga)
 
 import libsqliteadditions
-proc test(path: string) =
-  var ar = newGristAr(path)
-  echo ar.db.getValue(sql"select 1")
-  echo ar[]
-  # 01c617b1f19646812dba3b6c3889fbc1f514b3f0.jpg
-  # 04b117aaa94bbd045b25f4d4355e67c6670d2f98.jpg
-  let destPath = "/tmp/streamout.jpg"
-
-  let blob = ar.openBlobPointerViaIdent("01c617b1f19646812dba3b6c3889fbc1f514b3f0.jpg")
-  let size = blob_bytes(blob.blob)
-  let f = open(destPath, fmWrite)
-  echo "Size: ", size.formatSize()
-  if size > everythingBiggerIsStreamed:
-    echo "We gonna stream..."
-
-  const bufsize = 1024 * 16
-  # var buffer: array[bufsize, byte]
-  var buffer = newString(bufsize)
-  var offset: int = 0
-  while offset < size:
-    let toRead = min(bufsize, size - offset)
-    echo "DEBUG: read blob chunk: ", toRead
-    if blob_read(blob.blob, addr buffer[0], toRead.int32, offset.int32) == 0:
-      f.write(buffer[0 ..< toRead])
-    offset += toRead                               
-  f.close()
-
-
-  echo blob
+# proc test(path: string) =
+#   var ar = newGristAr(path)
+#   echo ar.db.getValue(sql"select 1")
+#   echo ar[]
+#   # 01c617b1f19646812dba3b6c3889fbc1f514b3f0.jpg
+#   # 04b117aaa94bbd045b25f4d4355e67c6670d2f98.jpg
+#   let destPath = "/tmp/streamout.jpg"
+#
+#   let blob = ar.openBlobPointerViaIdent("01c617b1f19646812dba3b6c3889fbc1f514b3f0.jpg")
+#   let size = blob_bytes(blob.blob)
+#   let f = open(destPath, fmWrite)
+#   echo "Size: ", size.formatSize()
+#   if size > everythingBiggerIsStreamed:
+#     echo "We gonna stream..."
+#
+#   const bufsize = 1024 * 16
+#   # var buffer: array[bufsize, byte]
+#   var buffer = newString(bufsize)
+#   var offset: int = 0
+#   while offset < size:
+#     let toRead = min(bufsize, size - offset)
+#     echo "DEBUG: read blob chunk: ", toRead
+#     if blob_read(blob.blob, addr buffer[0], toRead.int32, offset.int32) == 0:
+#       f.write(buffer[0 ..< toRead])
+#     offset += toRead                               
+#   f.close()
+#
   
 
 
@@ -129,11 +123,11 @@ proc test(path: string) =
 
 when isMainModule:
   dispatchMulti(
-    [test],
+    # [test],
     [extractFiles],
     [cliListFiles, cmdName = "At", doc = "List contents of archive"],
     [cliListFiles, cmdName = "listFiles", doc = "List contents of archive"],
     # [extract,  = "x", doc = "Extract files from archive"],
-    # [cat, cmdName = "cat", doc = "Print file content to stdout"],
+    [cat, cmdName = "cat", doc = "Print file content to stdout"],
     # [insert, cmdName = "i", doc = "Insert/Update files in archive"]
   )
