@@ -12,6 +12,10 @@ It utilizes high-performance SQLite Incremental BLOB I/O to handle large attachm
 
 ## Installation
 
+Use prebuild binaries from here: https://github.com/enthus1ast/gristar/releases/
+
+or build it from source
+
 You can install GristAr and all its dependencies easily using Nimble:
 
 ```bash
